@@ -68,6 +68,18 @@ python create_scatter_map.py --dandiset 000026,000409,000488
 
 *Combined regional view of 3 dandisets - points show both location and download volume with color/size coding*
 
+#### All Dandisets (Regional View)
+```bash
+# Process all available dandisets as scatter plot
+python create_scatter_map.py
+```
+
+**Creates:** Comprehensive regional scatter plot showing global access patterns (655 regions across 470 dandisets)
+
+![Global Scatter Map](examples/scatter_map.svg)
+
+*Global DANDI regional access patterns - comprehensive view of all dandisets showing worldwide download distribution*
+
 ### Command Reference
 
 #### Choropleth Maps (Country-level)
