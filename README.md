@@ -40,7 +40,7 @@ python create_choropleth.py --log-scale
 
 **Creates:** Global country-level visualization showing 7.69 PB across 117 countries
 
-![Global Choropleth Map](output/choropleth_map.svg)
+![Global Choropleth Map](examples/choropleth_map.svg)
 
 *Global DANDI downloads by country (logarithmic scale) - showing Netherlands and US as top consumers*
 
@@ -52,7 +52,7 @@ python create_choropleth.py --dandiset 000026 --log-scale
 
 **Creates:** Focused view of single dandiset (114.23 TB across 44 countries)
 
-![Single Dandiset Choropleth](output/choropleth_map_000026.svg)
+![Single Dandiset Choropleth](examples/choropleth_map_000026.svg)
 
 *Dandiset 000026 downloads by country - US and Netherlands dominate usage*
 
@@ -64,7 +64,7 @@ python create_scatter_map.py --dandiset 000026,000409,000488
 
 **Creates:** Regional scatter plot showing precise geographic distribution
 
-![Multi-Dandiset Scatter Map](output/scatter_map_000026_000409_000488.svg)
+![Multi-Dandiset Scatter Map](examples/scatter_map_000026_000409_000488.svg)
 
 *Combined regional view of 3 dandisets - points show both location and download volume with color/size coding*
 
@@ -102,4 +102,3 @@ Both scripts generate:
 - **SVG files**: Vector format for publications (300 DPI equivalent)
 - **PDF files**: Alternative format for presentations
 - **Console output**: Summary statistics and processing information
-
