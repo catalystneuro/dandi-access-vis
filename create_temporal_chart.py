@@ -120,8 +120,11 @@ def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.s
             other_series += df['bytes_sent'].reindex(date_range, fill_value=0)
         chart_data['Other'] = other_series
     
+    # Calculate cumulative sum for each column
+    chart_data_cumsum = chart_data.cumsum()
+    
     # Convert to GB for better readability
-    chart_data_gb = chart_data / (1024**3)  # Convert bytes to GB
+    chart_data_gb = chart_data_cumsum / (1024**3)  # Convert bytes to GB
     
     # Create the plot
     fig, ax = plt.subplots(figsize=(16, 10))
@@ -146,9 +149,9 @@ def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.s
                 alpha=0.8)
     
     # Customize the plot
-    ax.set_title('DANDI Downloads Over Time by Dandiset', fontsize=18, fontweight='bold', pad=20)
+    ax.set_title('DANDI Cumulative Downloads Over Time by Dandiset', fontsize=18, fontweight='bold', pad=20)
     ax.set_xlabel('Date', fontsize=14)
-    ax.set_ylabel('Daily Downloads (GB)', fontsize=14)
+    ax.set_ylabel('Cumulative Downloads (GB)', fontsize=14)
     
     # Format x-axis
     ax.xaxis.set_major_locator(mdates.YearLocator())
