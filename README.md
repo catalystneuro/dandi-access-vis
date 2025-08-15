@@ -80,6 +80,18 @@ python create_scatter_map.py
 
 *Global DANDI regional access patterns - comprehensive view of all dandisets showing worldwide download distribution*
 
+#### Temporal Analysis
+```bash
+# Show downloads over time with top dandisets
+python create_temporal_chart.py
+```
+
+**Creates:** Stacked area chart showing temporal evolution of DANDI downloads (8.97 PB across 470 dandisets, 2021-2025)
+
+![Temporal Chart](examples/temporal_chart.svg)
+
+*DANDI downloads over time - stacked visualization showing top 10 dandisets individually with others grouped as "Other"*
+
 ### Command Reference
 
 #### Choropleth Maps (Country-level)
@@ -107,6 +119,18 @@ Options:
   --help                   Show help message
 ```
 
+#### Temporal Charts (Time-series)
+
+```bash
+python create_temporal_chart.py [options]
+
+Options:
+  --output, -o FILE        Output filename (default: output/temporal_chart.svg)
+  --data-path, -d PATH     Data directory (default: ../access-summaries/content)
+  --dandiset DANDISETS     Comma-separated dandiset IDs (default: all)
+  --top-n, -n NUMBER       Number of top dandisets to show individually (default: 10)
+  --help                   Show help message
+```
 
 ## Output Files
 
