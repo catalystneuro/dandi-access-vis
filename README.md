@@ -86,7 +86,7 @@ python create_scatter_map.py
 python create_temporal_chart.py
 ```
 
-**Creates:** Cumulative stacked area chart showing growth of DANDI downloads (8.97 PB across 470 dandisets, 2021-2025)
+**Creates:** Cumulative stacked area chart showing growth of DANDI downloads (4.49 PB across 469 dandisets, 2021-2025)
 
 ![Temporal Chart](examples/temporal_chart.svg)
 

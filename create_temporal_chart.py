@@ -8,8 +8,6 @@ import argparse
 import pandas as pd
 import matplotlib.pyplot as plt
 import matplotlib.dates as mdates
-from datetime import datetime
-import numpy as np
 from pathlib import Path
 import warnings
 warnings.filterwarnings('ignore')
@@ -34,6 +32,10 @@ def load_temporal_data(data_path='../access-summaries/content', dandiset_ids=Non
     
     for dandiset_dir in summaries_dir.iterdir():
         if dandiset_dir.is_dir():
+            # Skip "archive" as it's an aggregate of all dandisets (avoid double counting)
+            if dandiset_dir.name == 'archive':
+                continue
+                
             # If specific dandisets requested, only process those
             if requested_dandisets and dandiset_dir.name not in requested_dandisets:
                 continue
@@ -64,7 +66,7 @@ def load_temporal_data(data_path='../access-summaries/content', dandiset_ids=Non
     return temporal_data
 
 
-def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.svg'):
+def create_temporal_chart(temporal_data: dict, top_n: int = 10, output_file: str = 'temporal_chart.svg'):
     """Create stacked line chart showing downloads over time."""
     
     if not temporal_data:
@@ -123,11 +125,11 @@ def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.s
     # Calculate cumulative sum for each column
     chart_data_cumsum = chart_data.cumsum()
     
-    # Convert to GB for better readability
-    chart_data_gb = chart_data_cumsum / (1024**3)  # Convert bytes to GB
+    # Convert to PB for better readability
+    chart_data_pb = chart_data_cumsum / (1024**5)  # Convert bytes to PB
     
     # Create the plot
-    fig, ax = plt.subplots(figsize=(16, 10))
+    _, ax = plt.subplots(figsize=(8, 5))
     
     # Define color palette - use colorbrewer Set3 for good distinction
     colors = ['#8dd3c7', '#ffffb3', '#bebada', '#fb8072', '#80b1d3', 
@@ -135,23 +137,26 @@ def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.s
               '#ccebc5', '#ffed6f']
     
     # If we have "Other", make it gray
-    if 'Other' in chart_data_gb.columns:
-        column_colors = {col: colors[i % len(colors)] for i, col in enumerate(chart_data_gb.columns[:-1])}
+    if 'Other' in chart_data_pb.columns:
+        column_colors = {col: colors[i % len(colors)] for i, col in enumerate(chart_data_pb.columns[:-1])}
         column_colors['Other'] = '#999999'  # Gray for "Other"
     else:
-        column_colors = {col: colors[i % len(colors)] for i, col in enumerate(chart_data_gb.columns)}
+        column_colors = {col: colors[i % len(colors)] for i, col in enumerate(chart_data_pb.columns)}
     
     # Create stacked area plot
-    ax.stackplot(chart_data_gb.index, 
-                *[chart_data_gb[col] for col in chart_data_gb.columns],
-                labels=chart_data_gb.columns,
-                colors=[column_colors[col] for col in chart_data_gb.columns],
+    ax.stackplot(chart_data_pb.index, 
+                *[chart_data_pb[col] for col in chart_data_pb.columns],
+                labels=chart_data_pb.columns,
+                colors=[column_colors[col] for col in chart_data_pb.columns],
                 alpha=0.8)
     
     # Customize the plot
     ax.set_title('DANDI Cumulative Downloads Over Time by Dandiset', fontsize=18, fontweight='bold', pad=20)
     ax.set_xlabel('Date', fontsize=14)
-    ax.set_ylabel('Cumulative Downloads (GB)', fontsize=14)
+    ax.set_ylabel('Cumulative Downloads (PiB)', fontsize=14)
+    
+    # Set tight x-axis limits to actual data range
+    ax.set_xlim(min_date, max_date)
     
     # Format x-axis
     ax.xaxis.set_major_locator(mdates.YearLocator())
@@ -163,8 +168,8 @@ def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.s
     plt.setp(ax.xaxis.get_majorticklabels(), rotation=0)
     plt.setp(ax.xaxis.get_minorticklabels(), rotation=45, fontsize=8)
     
-    # Format y-axis with scientific notation for large numbers
-    ax.ticklabel_format(style='scientific', axis='y', scilimits=(0,0))
+    # Format y-axis - remove scientific notation since we're using PB units
+    ax.ticklabel_format(style='plain', axis='y')
     
     # Add legend
     handles, labels = ax.get_legend_handles_labels()
@@ -205,6 +210,8 @@ def create_temporal_chart(temporal_data, top_n=10, output_file='temporal_chart.s
     peak_day = daily_totals.idxmax()
     peak_amount = daily_totals.max()
     print(f"Peak download day: {peak_day.strftime('%Y-%m-%d')} ({format_bytes(peak_amount)})")
+
+    return ax
 
 
 def main():
