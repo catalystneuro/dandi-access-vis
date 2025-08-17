@@ -2,6 +2,8 @@
 
 This repository contains tools for creating geographic visualizations of DANDI data access patterns, including choropleth maps and scatter plots showing data download patterns by country and region.
 
+The source data that is being visualized is here: https://github.com/dandi/access-summaries. By default, the access-summaries repo is expected to be downloaded next to this repo, though this can be adjusted using optional CLI args.
+
 ## Features
 
 - **Choropleth Maps**: Country-level data visualization with color-coded regions
