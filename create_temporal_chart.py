@@ -318,7 +318,7 @@ def main() -> None:
     Examples
     --------
     >>> # Run from command line
-    >>> # python create_temporal_chart.py --dandiset 000026 --top-n 5
+    >>> # python create_temporal_chart.py --top-n 5
     """
     parser = argparse.ArgumentParser(
         description="Create temporal visualization of DANDI downloads over time"
