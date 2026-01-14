@@ -93,12 +93,12 @@ def create_scatter_map(
     ax = plt.axes(projection=ccrs.PlateCarree())
 
     # Add natural features using cartopy (all map features first, before scatter points)
-    ax.add_feature(cfeature.LAND, color="#dde9de", alpha=0.8)
-    ax.add_feature(cfeature.OCEAN, color="#e3f2fd", alpha=0.8)
+    ax.add_feature(cfeature.LAND, color="#e0e0e0")
+    ax.add_feature(cfeature.OCEAN, color="white")
     ax.add_feature(cfeature.COASTLINE, color="#666666", linewidth=0.5)
     ax.add_feature(cfeature.BORDERS, color="#999999", linewidth=0.3)
-    ax.add_feature(cfeature.LAKES, color="#b3e5fc", alpha=0.8)
-    ax.add_feature(cfeature.RIVERS, color="#90caf9", linewidth=0.5)
+    ax.add_feature(cfeature.LAKES, color="#e0e0e0")
+    ax.add_feature(cfeature.RIVERS, color="#e0e0e0", linewidth=0.5)
     ax.add_feature(
         cfeature.STATES, linestyle="--", linewidth=0.5, alpha=0.8, edgecolor="#cccccc"
     )
@@ -122,14 +122,9 @@ def create_scatter_map(
             zorder=10,
         )  # High zorder to be on top
 
-    # Customize plot
-    title = "DANDI Data Downloads by Region"
-    if dandiset_ids:
-        if len(dandiset_ids) == 1:
-            title = f"DANDI Data Downloads by Region - Dandiset {dandiset_ids[0]}"
-        else:
-            title = f"DANDI Data Downloads by Region - {len(dandiset_ids)} Dandisets"
-    ax.set_title(title, fontsize=20, fontweight="bold", pad=20)
+    # Remove bounding box
+    for spine in ax.spines.values():
+        spine.set_visible(False)
 
     # Calculate counts for legend
     low_count = len(df[df["fill_color"] == COLOR_SPECS["low"]["fill"]])
@@ -138,12 +133,13 @@ def create_scatter_map(
     very_high_count = len(df[df["fill_color"] == COLOR_SPECS["very-high"]["fill"]])
 
     # Create custom legend with counts in parentheses and correct sizes
+    legend_size = 60  # 1.5x the map marker size
     legend_elements = [
         plt.scatter(
             [],
             [],
             c=COLOR_SPECS["low"]["fill"],
-            s=COLOR_SPECS["low"]["size"],
+            s=legend_size,
             label=f"{COLOR_SPECS['low']['label']} ({low_count})",
             edgecolors=COLOR_SPECS["low"]["stroke"],
         ),
@@ -151,7 +147,7 @@ def create_scatter_map(
             [],
             [],
             c=COLOR_SPECS["medium"]["fill"],
-            s=COLOR_SPECS["medium"]["size"],
+            s=legend_size,
             label=f"{COLOR_SPECS['medium']['label']} ({medium_count})",
             edgecolors=COLOR_SPECS["medium"]["stroke"],
         ),
@@ -159,7 +155,7 @@ def create_scatter_map(
             [],
             [],
             c=COLOR_SPECS["high"]["fill"],
-            s=COLOR_SPECS["high"]["size"],
+            s=legend_size,
             label=f"{COLOR_SPECS['high']['label']} ({high_count})",
             edgecolors=COLOR_SPECS["high"]["stroke"],
         ),
@@ -167,7 +163,7 @@ def create_scatter_map(
             [],
             [],
             c=COLOR_SPECS["very-high"]["fill"],
-            s=COLOR_SPECS["very-high"]["size"],
+            s=legend_size,
             label=f"{COLOR_SPECS['very-high']['label']} ({very_high_count})",
             edgecolors=COLOR_SPECS["very-high"]["stroke"],
         ),
@@ -175,9 +171,9 @@ def create_scatter_map(
     ax.legend(
         handles=legend_elements,
         loc="lower left",
-        fontsize=12,
+        fontsize=18,
         title="Download Volume",
-        title_fontsize=14,
+        title_fontsize=21,
     )
 
     plt.tight_layout()
@@ -190,6 +186,11 @@ def create_scatter_map(
     pdf_file = output_file.replace(".svg", ".pdf")
     plt.savefig(pdf_file, dpi=300, bbox_inches="tight", facecolor="white")
     print(f"PDF version saved as: {pdf_file}")
+
+    # Also save as PNG
+    png_file = output_file.replace(".svg", ".png")
+    plt.savefig(png_file, dpi=300, bbox_inches="tight", facecolor="white")
+    print(f"PNG version saved as: {png_file}")
 
 
 def main() -> None:
