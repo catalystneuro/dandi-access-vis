@@ -7,6 +7,7 @@ The source data that is being visualized is here: https://github.com/dandi/acces
 ## Features
 
 - **Choropleth Maps**: Country-level data visualization with color-coded regions
+- **Subdivision Choropleth Maps**: Admin-1 (state/province) level visualization using GADM data
 - **Scatter Maps**: Region-level visualization with proportional point sizes
 - **Multiple Dandiset Support**: Process specific dandisets or combinations of dandisets
 - **Flexible Data Paths**: Configure custom data directory locations
@@ -82,6 +83,18 @@ python create_scatter_map.py
 
 *Global DANDI regional access patterns - comprehensive view of all dandisets showing worldwide download distribution*
 
+#### Subdivision Choropleth (State/Province-level)
+```bash
+# Create subdivision-level choropleth with max cap at 10 TB
+python create_subdivision_choropleth.py --log-scale --max 10TB
+```
+
+**Creates:** High-resolution state/province-level choropleth using GADM administrative boundaries
+
+![Subdivision Choropleth Map](examples/subdivision_choropleth.png)
+
+*Subdivision-level visualization showing downloads at admin-1 granularity (states, provinces, regions) - uses GADM 4.1 data for accurate boundary matching*
+
 #### Temporal Analysis
 ```bash
 # Show downloads over time with top dandisets
@@ -118,6 +131,21 @@ Options:
   --output, -o FILE        Output filename (default: output/scatter_map.svg)
   --data-path, -d PATH     Data directory (default: ../access-summaries/content)
   --dandiset DANDISETS     Comma-separated dandiset IDs (default: all)
+  --help                   Show help message
+```
+
+#### Subdivision Choropleth Maps (State/Province-level)
+
+```bash
+python create_subdivision_choropleth.py [options]
+
+Options:
+  --log-scale, -l          Use logarithmic scale (recommended for wide ranges)
+  --output, -o FILE        Output filename (default: output/subdivision_choropleth.svg)
+  --data-path, -d PATH     Data directory (default: ../access-summaries/content)
+  --dandiset DANDISETS     Comma-separated dandiset IDs (default: all)
+  --max, -m VALUE          Maximum value for color scale (e.g., '10TB', '500GB')
+  --dry-run                Test matching logic without generating plot
   --help                   Show help message
 ```
 
