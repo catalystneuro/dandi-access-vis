@@ -12,32 +12,32 @@ import yaml
 # Single dictionary for all color specifications
 COLOR_SPECS = {
     "low": {
-        "fill": "#26c6da",  # Cyan
-        "stroke": "#0097a7",  # Dark cyan
-        "name": "Cyan",
+        "fill": "#66bb6a",  # Light green
+        "stroke": "#388e3c",  # Dark green
+        "name": "Green",
         "label": "< 10 MB",
         "size": 20,
     },
     "medium": {
-        "fill": "#66bb6a",  # Light green
-        "stroke": "#388e3c",  # Dark green
-        "name": "Green",
+        "fill": "#ffca28",  # Yellow
+        "stroke": "#f57f17",  # Dark yellow
+        "name": "Yellow",
         "label": "10 MB - 10 GB",
         "size": 40,
     },
     "high": {
-        "fill": "#ffca28",  # Yellow
-        "stroke": "#f57f17",  # Dark yellow
-        "name": "Yellow",
-        "label": "10 GB - 10 TB",
-        "size": 60,
-    },
-    "very-high": {
         "fill": "#ff7043",  # Orange-red
         "stroke": "#d84315",  # Dark orange-red
         "name": "Orange",
+        "label": "10 GB - 10 TB",
+        "size": 70,
+    },
+    "very-high": {
+        "fill": "#9c27b0",  # Purple
+        "stroke": "#6a1b9a",  # Dark purple
+        "name": "Purple",
         "label": "> 10 TB",
-        "size": 80,
+        "size": 100,
     },
 }
 

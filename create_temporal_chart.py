@@ -190,10 +190,10 @@ def create_temporal_chart(
     chart_data_cumsum = chart_data.cumsum()
 
     # Convert to PB for better readability
-    chart_data_pb = chart_data_cumsum / (1024**5)  # Convert bytes to PB
+    chart_data_pb = chart_data_cumsum / (1000**5)  # Convert bytes to PB (base 10)
 
     # Create the plot
-    _, ax = plt.subplots(figsize=(8, 5))
+    _, ax = plt.subplots(figsize=(20, 12))
 
     # Define color palette - use colorbrewer Set3 for good distinction
     colors = [
@@ -232,28 +232,21 @@ def create_temporal_chart(
         alpha=0.8,
     )
 
-    # Customize the plot
-    ax.set_title(
-        "DANDI Cumulative Downloads Over Time by Dandiset",
-        fontsize=18,
-        fontweight="bold",
-        pad=20,
-    )
-    ax.set_xlabel("Date", fontsize=14)
-    ax.set_ylabel("Cumulative Downloads (PiB)", fontsize=14)
+    # Remove bounding box
+    for spine in ax.spines.values():
+        spine.set_visible(False)
+
+    ax.set_xlabel("Date", fontsize=21)
+    ax.set_ylabel("Cumulative Downloads (PB)", fontsize=21)
+    ax.tick_params(axis="both", labelsize=18)
 
     # Set tight x-axis limits to actual data range
     ax.set_xlim(min_date, max_date)
 
     # Format x-axis
     ax.xaxis.set_major_locator(mdates.YearLocator())
-    ax.xaxis.set_minor_locator(mdates.MonthLocator([1, 4, 7, 10]))
+    ax.xaxis.set_minor_locator(mdates.MonthLocator())
     ax.xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
-    ax.xaxis.set_minor_formatter(mdates.DateFormatter("%b"))
-
-    # Rotate x-axis labels for better readability
-    plt.setp(ax.xaxis.get_majorticklabels(), rotation=0)
-    plt.setp(ax.xaxis.get_minorticklabels(), rotation=45, fontsize=8)
 
     # Format y-axis - remove scientific notation since we're using PB units
     ax.ticklabel_format(style="plain", axis="y")
@@ -266,6 +259,7 @@ def create_temporal_chart(
         list(reversed(labels)),
         loc="upper left",
         bbox_to_anchor=(0, 1),
+        fontsize=18,
         frameon=True,
         fancybox=True,
         shadow=True,
@@ -288,6 +282,11 @@ def create_temporal_chart(
     pdf_file = output_file.replace(".svg", ".pdf")
     plt.savefig(pdf_file, dpi=300, bbox_inches="tight", facecolor="white")
     print(f"PDF version saved as: {pdf_file}")
+
+    # Also save as PNG
+    png_file = output_file.replace(".svg", ".png")
+    plt.savefig(png_file, dpi=300, bbox_inches="tight", facecolor="white")
+    print(f"PNG version saved as: {png_file}")
 
     # Print summary statistics
     print(f"\nSummary Statistics:")
