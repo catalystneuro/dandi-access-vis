@@ -6,6 +6,7 @@ Uses GADM (Global Administrative Areas) dataset for better GeoIP name matching.
 
 from typing import Dict, List, Optional
 import argparse
+import json
 import geopandas as gpd
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -185,6 +186,7 @@ def create_subdivision_choropleth(
     dandiset_ids: Optional[List[str]] = None,
     dry_run: bool = False,
     max_bytes: Optional[int] = None,
+    vertical_colorbar: bool = False,
 ) -> None:
     """
     Create choropleth map showing data downloaded by admin-1 subdivisions worldwide.
@@ -202,6 +204,9 @@ def create_subdivision_choropleth(
     max_bytes : int, optional
         Maximum bytes value for color scale. Values above this are capped.
         If None (default), uses the maximum value in the data.
+    vertical_colorbar : bool, optional
+        If True, place colorbar vertically on the right side. By default False
+        (horizontal colorbar at the bottom).
 
     Examples
     --------
@@ -245,6 +250,10 @@ def create_subdivision_choropleth(
         'GR': 'GRC', 'HU': 'HUN', 'RO': 'ROU', 'UA': 'UKR', 'CY': 'CYP',
         'LU': 'LUX', 'SK': 'SVK', 'SI': 'SVN', 'EE': 'EST', 'LV': 'LVA',
         'LT': 'LTU', 'HR': 'HRV', 'RS': 'SRB', 'BG': 'BGR', 'KW': 'KWT',
+        'CI': 'CIV', 'MT': 'MLT', 'JM': 'JAM', 'JO': 'JOR', 'ET': 'ETH',
+        'MG': 'MDG', 'GP': 'GLP', 'RE': 'REU', 'KZ': 'KAZ', 'SY': 'SYR',
+        'MD': 'MDA', 'YE': 'YEM', 'VG': 'VGB', 'OM': 'OMN', 'AZ': 'AZE',
+        'TL': 'TLS',
     }
     iso2_to_iso3.update(common_iso_mappings)
 
@@ -259,6 +268,7 @@ def create_subdivision_choropleth(
         'NU': ('NU', None),  # Niue - small island nation, aggregate to country level
         'MQ': ('MQ', None),  # Martinique - French overseas territory, aggregate to country level
         'CW': ('CW', None),  # Curaçao - Dutch Caribbean territory, aggregate to country level
+        'MV': ('MV', None),  # Maldives - not in GADM, aggregate to country level
     }
 
     # Parse region data to extract subdivision-level data
@@ -346,7 +356,7 @@ def create_subdivision_choropleth(
             'madrid': 'comunidad de madrid',
         },
         'TH': {
-            'lopburi': 'lobpuri',
+            'lopburi': 'lop buri',
         },
         'CH': {
             'geneva': 'genève',
@@ -378,15 +388,19 @@ def create_subdivision_choropleth(
             'north karelia': 'eastern finland',
             'north savo': 'eastern finland',
             'south savo': 'eastern finland',
+            'paijat-hame': 'southern finland',
+            'päijät-häme': 'southern finland',
         },
         'DK': {
             'capital region': 'hovedstaden',
             'central denmark region': 'midtjylland',
             'central jutland': 'midtjylland',
             'north denmark region': 'nordjylland',
+            'north denmark': 'nordjylland',
             'region zealand': 'sjælland',
             'zealand': 'sjælland',
             'region of southern denmark': 'syddanmark',
+            'south denmark': 'syddanmark',
         },
         'RU': {
             'moscow oblast': 'moskva',
@@ -400,6 +414,7 @@ def create_subdivision_choropleth(
             'kuzbass': 'kemerovo',
             'novgorod oblast': 'novgorod',
             'nizhny novgorod oblast': 'nizhegorod',
+            'oryol oblast': 'orel',
         },
         'EG': {
             'giza': 'al jizah',
@@ -423,6 +438,8 @@ def create_subdivision_choropleth(
             'suez': 'as suways',
             'faiyum': 'al fayyum',
             'north sinai': 'shamal sina',
+            'beheira': 'al buhayrah',
+            'qena': 'qina',
         },
         'DZ': {
             'algiers': 'alger',
@@ -488,11 +505,13 @@ def create_subdivision_choropleth(
             'west azerbaijan': 'west azarbaijan',
             'māzandarān': 'mazandaran',
             'mazandaran': 'mazandaran',
+            'chaharmahal and bakhtiari': 'chahar mahall and bakhtiari',
         },
         'KW': {
             'mubārak al kabīr': 'mubarak al-kabeer',
             'al aḩmadī': 'al ahmadi',
             'al ahmadi': 'al ahmadi',
+            'al asimah': 'al kuwayt',
         },
         'BT': {
             'chukha': 'chhukha',
@@ -510,6 +529,7 @@ def create_subdivision_choropleth(
             'rhône-alpes': 'auvergne-rhône-alpes',
             'rhone-alpes': 'auvergne-rhône-alpes',
             'rhone alpes': 'auvergne-rhône-alpes',
+            'corsica': 'corse',
         },
         'PL': {
             'mazovia': 'mazowieckie',
@@ -526,6 +546,7 @@ def create_subdivision_choropleth(
             'lublin': 'lubelskie',
             'łódź voivodeship': 'łódzkie',
             'opole voivodeship': 'opolskie',
+            'podlasie': 'podlaskie',
         },
         'AR': {
             'buenos aires f.d.': 'ciudad de buenos aires',
@@ -535,8 +556,9 @@ def create_subdivision_choropleth(
             'kyiv': 'kiev',
             'khmelnytskyi': "khmel'nyts'kyy",
             'vinnytsia': 'vinnytsya',
-            'zaporizhzhia': "zaporiz'ka",
+            'zaporizhzhia': 'zaporizhia',
             'mykolaiv': 'mykolayiv',
+            'odesa': 'odessa',
         },
         'IQ': {
             'erbil': 'arbil',
@@ -550,6 +572,8 @@ def create_subdivision_choropleth(
             'al qādisīyah': 'al-qadisiyah',
             'wāsiţ': 'wasit',
             'al muthanna governorate': 'al-muthannia',
+            'anbar': 'al-anbar',
+            'muthanna': 'al-muthannia',
         },
         'NO': {
             'vestland': 'hordaland',
@@ -559,7 +583,7 @@ def create_subdivision_choropleth(
             'agder': 'vest-agder',
             'troms og finnmark': 'troms',
             'trøndelag': 'sør-trøndelag',
-            'østfold': 'østfold',
+            'østfold': 'Ãstfold',
         },
         'PH': {
             'metro manila': 'metropolitan manila',
@@ -575,6 +599,7 @@ def create_subdivision_choropleth(
             'eastern visayas': 'leyte',
             'zamboanga peninsula': 'zamboanga del sur',
             'caraga': 'agusan del norte',
+            'mimaropa': 'oriental mindoro',
         },
         'IS': {
             'capital region': 'höfuðborgarsvæði',
@@ -627,6 +652,7 @@ def create_subdivision_choropleth(
             'addis ababa': 'addis abeba',
             'oromiya': 'oromia',
             'sidama region': 'southern nations, nationalities',
+            'south ethiopia regional state': 'southern nations, nationalities',
         },
         'LB': {
             'mont-liban': 'mount lebanon',
@@ -663,10 +689,11 @@ def create_subdivision_choropleth(
             'valletta': 'nofsinhar',
             'dingli': 'ċentrali',
             "saint paul's bay": 'tramuntana',
+            'il-fgura': 'xlokk',
         },
         'MY': {
             'penang': 'pulau pinang',
-            'terengganu': 'terengganu',
+            'terengganu': 'trengganu',
         },
         'TM': {
             'ashgabat': 'ahal',
@@ -674,6 +701,7 @@ def create_subdivision_choropleth(
         'LV': {
             'jūrmala': 'riga',
             'jurmala': 'riga',
+            'ķekava': 'riga',
         },
         'KG': {
             'bishkek': 'chüy',
@@ -688,7 +716,9 @@ def create_subdivision_choropleth(
             'mangystau': 'mangghystau',
             'astana': 'aqmola',
             'almaty city': 'almaty',
+            'almaty region': 'almaty',
             "aktyubinskaya oblast'": 'aqtöbe',
+            'aktyubinskaya oblast': 'aqtöbe',
             'aktobe': 'aqtöbe',
             'shymkent': 'south kazakhstan',
             'karaganda': 'qaraghandy',
@@ -726,6 +756,8 @@ def create_subdivision_choropleth(
             'osijek-baranja': 'osjecko-baranjska',
             'međimurje': 'medimurska',
             'brod-posavina': 'brodsko-posavska',
+            'primorje-gorski kotar': 'primorsko-goranska',
+            'split-dalmatia': 'splitsko-dalmatinska',
         },
         'BA': {
             'federation of b&h': 'federacija bosna i hercegovina',
@@ -737,12 +769,14 @@ def create_subdivision_choropleth(
         },
         'OM': {
             'northeastern governorate': 'ash sharqiyah north',
+            'ad dhahirah': 'al dhahira',
         },
         'SI': {
             'ljubljana': 'osrednjeslovenska',
             'bled': 'gorenjska',
             'velenje': 'savinjska',
             'maribor city municipality': 'podravska',
+            'kranj': 'gorenjska',
         },
         'UG': {
             'central region': 'kampala',
@@ -756,15 +790,18 @@ def create_subdivision_choropleth(
         },
         'MG': {
             'analamanga': 'antananarivo',
+            'atsinanana': 'toamasina',
         },
         'LY': {
             'banghāzī': 'benghazi',
         },
         'JO': {
             'jerash': 'jarash',
+            'ajloun': 'ajlun',
         },
         'YE': {
             "ta'izz": "ta`izz",
+            'amanat alasimah': 'amanat al asimah',
         },
         'DO': {
             'hermanas mirabal': 'salcedo',
@@ -796,6 +833,9 @@ def create_subdivision_choropleth(
             'ganja': 'ganja-qazakh',
             'sumqayit': 'absheron',
             'nakhichevan assr': 'nakhchivan',
+            'barda': 'aran',
+            'abşeron': 'absheron',
+            'mingǝcevir': 'aran',
         },
         'MD': {
             'chișinău municipality': 'chișinău',
@@ -813,6 +853,7 @@ def create_subdivision_choropleth(
         },
         'PK': {
             'gilgit-baltistan': 'federally administered tribal ar',
+            'azad kashmir': 'federally administered tribal ar',
         },
         'TR': {
             'kahramanmaraş': 'k. maras',
@@ -821,14 +862,6 @@ def create_subdivision_choropleth(
             'İzmir province': 'izmir',
             'i̇zmir province': 'izmir',
             'eskişehir': 'eskisehir',
-        },
-        'LT': {
-            'vilnius': 'vilniaus',
-            'kaunas': 'kauno',
-            'klaipeda': 'klaipedos',
-            'klaipėda county': 'klaipedos',
-            'panevezys': 'panevezio',
-            'siauliai': 'šiauliai',
         },
         'CZ': {
             'central bohemia': 'středočeský',
@@ -856,6 +889,24 @@ def create_subdivision_choropleth(
             'béni mellal-khénifra': 'tadla - azilal',
             'beni mellal-khenifra': 'tadla - azilal',
         },
+        'JM': {
+            'st. elizabeth': 'saint elizabeth',
+        },
+        'GP': {
+            'guadeloupe': 'basse-terre',
+        },
+        'RE': {
+            'réunion': 'saint-denis',
+        },
+        'VG': {
+            'british virgin islands': 'tortola',
+        },
+        'LU': {
+            'esch-sur-alzette': 'luxembourg',
+        },
+        'SY': {
+            'latakia': 'lattakia',
+        },
         'ID': {
             'east java': 'jawa timur',
             'west java': 'jawa barat',
@@ -876,9 +927,10 @@ def create_subdivision_choropleth(
             'central papua': 'papua',
             'southwest papua': 'papua barat',
             'bangka–belitung islands': 'bangka belitung',
+            'east nusa tenggara': 'nusa tenggara timur',
         },
         'CI': {
-            'abidjan autonomous district': 'lagunes',
+            'abidjan autonomous district': 'abidjan',
             'vallée du bandama district': 'vallée du bandama',
             'lacs district': 'lacs',
         },
@@ -891,8 +943,14 @@ def create_subdivision_choropleth(
         'CO': {
             'cauca department': 'cauca',
         },
-        'IN': {
-            'jammu and kashmir': 'jammu and kashmir',  # Disputed territory
+        'LT': {
+            'vilnius': 'vilniaus',
+            'kaunas': 'kauno',
+            'klaipeda': 'klaipedos',
+            'klaipėda county': 'klaipedos',
+            'panevezys': 'panevezio',
+            'panevėžys': 'panevezio',
+            'siauliai': 'šiauliai',
         },
     }
 
@@ -910,9 +968,9 @@ def create_subdivision_choropleth(
                 name = name[len(prefix):]
         # Replace accented characters with ASCII equivalents
         replacements = {
-            'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'ą': 'a',
-            'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'ę': 'e', 'ě': 'e',
-            'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i', 'ı': 'i',
+            'á': 'a', 'à': 'a', 'â': 'a', 'ä': 'a', 'ã': 'a', 'ą': 'a', 'ă': 'a', 'ā': 'a',
+            'é': 'e', 'è': 'e', 'ê': 'e', 'ë': 'e', 'ę': 'e', 'ě': 'e', 'ė': 'e', 'ǝ': 'e',
+            'í': 'i', 'ì': 'i', 'î': 'i', 'ï': 'i', 'ı': 'i', 'ī': 'i',
             'ó': 'o', 'ò': 'o', 'ô': 'o', 'ö': 'o', 'õ': 'o', 'ő': 'o', 'ō': 'o',
             'ú': 'u', 'ù': 'u', 'û': 'u', 'ü': 'u', 'ű': 'u', 'ū': 'u',
             'ñ': 'n', 'ń': 'n', 'ň': 'n',
@@ -926,8 +984,8 @@ def create_subdivision_choropleth(
             'ţ': 't', 'ț': 't', 'ť': 't',
             'đ': 'd', 'ď': 'd',
             'ğ': 'g',
-            'ħ': 'h',
-            '-': ' ', '_': ' ', "'": '',
+            'ħ': 'h', 'ḥ': 'h',
+            '-': ' ', '_': ' ', "'": '', '\u2019': '', '\u2018': '', '\u02bc': '',
         }
         for old, new in replacements.items():
             name = name.replace(old, new)
@@ -1148,14 +1206,23 @@ def create_subdivision_choropleth(
 
     # Add colorbar if we have data
     if len(subdivisions_with_data) > 0:
-        cbar_ax = fig.add_axes([0.15, 0.25, 0.01, 0.2])
+        if vertical_colorbar:
+            cbar_ax = fig.add_axes([1.0, 0.35, 0.015, 0.3])
+            orientation = 'vertical'
+        else:
+            cbar_ax = fig.add_axes([0.375, 0.08, 0.25, 0.02])
+            orientation = 'horizontal'
         sm = ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array([])
-        cbar = fig.colorbar(sm, cax=cbar_ax)
-        cbar.ax.tick_params(
-            labelsize=7, left=True, right=False, labelleft=True, labelright=False
-        )
-        cbar.ax.yaxis.set_label_position("left")
+        cbar = fig.colorbar(sm, cax=cbar_ax, orientation=orientation)
+        if vertical_colorbar:
+            cbar.ax.tick_params(
+                labelsize=14, left=False, right=True, labelleft=False, labelright=True
+            )
+        else:
+            cbar.ax.tick_params(
+                labelsize=14, bottom=True, top=False, labelbottom=True, labeltop=False
+            )
 
         # Define fixed tick values for readable labels
         unit_values = [1024, 1024**2, 1024**3, 1024**4, 1024**5]
@@ -1176,17 +1243,17 @@ def create_subdivision_choropleth(
                 if min_log <= log_val < max_log:  # Use < instead of <= to leave room for cap label
                     valid_ticks.append(log_val)
                     valid_labels.append(label)
-            
+
             # Add "≥ [max]" label at the top if a cap is set
             if max_bytes is not None:
                 valid_ticks.append(max_log)
                 valid_labels.append(f"≥ {format_bytes(max_bytes)}")
-            
+
             if valid_ticks:
                 cbar.set_ticks(valid_ticks)
                 cbar.set_ticklabels(valid_labels)
-        
-        cbar.set_label("Data Downloaded", rotation=90, labelpad=10, fontsize=10)
+
+        cbar.set_label("Data Downloaded", labelpad=10, fontsize=20)
 
     plt.tight_layout()
 
@@ -1208,6 +1275,65 @@ def create_subdivision_choropleth(
             print(f"  {row['COUNTRY']} / {row['NAME_1']}: {format_bytes(row['bytes_downloaded'])}")
 
     plt.close()
+
+
+def get_nwb_dandiset_ids(data_path: str = "../access-summaries/content") -> List[str]:
+    """
+    Get list of dandiset IDs that contain NWB data, using DANDI API metadata.
+
+    Results are cached to data/nwb_dandiset_ids.json with 24-hour expiry.
+
+    Parameters
+    ----------
+    data_path : str
+        Path to access summaries directory, used to determine which dandisets to check.
+
+    Returns
+    -------
+    list of str
+        Dandiset IDs that contain NWB files.
+    """
+    import time
+
+    cache_path = Path("data/nwb_dandiset_ids.json")
+    cache_path.parent.mkdir(parents=True, exist_ok=True)
+
+    # Check cache (24h expiry)
+    if cache_path.exists():
+        cache_data = json.loads(cache_path.read_text())
+        if time.time() - cache_data.get("timestamp", 0) < 86400:
+            print(f"Using cached NWB dandiset list ({len(cache_data['ids'])} dandisets)")
+            return cache_data["ids"]
+
+    # Get all dandiset IDs from summaries directory
+    summaries_dir = Path(data_path) / "summaries"
+    all_ids = sorted(
+        d.name for d in summaries_dir.iterdir()
+        if d.is_dir() and d.name.isdigit()
+    )
+
+    print(f"Querying DANDI API to find NWB dandisets ({len(all_ids)} to check)...")
+
+    from dandi.dandiapi import DandiAPIClient
+
+    nwb_ids = []
+    client = DandiAPIClient()
+    for dandiset_id in tqdm(all_ids, desc="Checking dandisets"):
+        try:
+            dandiset = client.get_dandiset(dandiset_id)
+            raw_metadata = dandiset.get_raw_metadata()
+            standards = raw_metadata.get("assetsSummary", {}).get("dataStandard", [])
+            if any("NWB" in s.get("name", "").upper() for s in standards):
+                nwb_ids.append(dandiset_id)
+        except Exception:
+            continue
+
+    print(f"Found {len(nwb_ids)} NWB dandisets out of {len(all_ids)} total")
+
+    # Save cache
+    cache_path.write_text(json.dumps({"timestamp": time.time(), "ids": nwb_ids}))
+
+    return nwb_ids
 
 
 def main() -> None:
@@ -1256,6 +1382,16 @@ def main() -> None:
         default=None,
         help="Maximum value for color scale (e.g., '10TB', '500GB'). Values above this are capped. Default: use data max.",
     )
+    parser.add_argument(
+        "--nwb-only",
+        action="store_true",
+        help="Only include dandisets that contain NWB data",
+    )
+    parser.add_argument(
+        "--vertical-colorbar",
+        action="store_true",
+        help="Place colorbar vertically on the right side instead of horizontally at the bottom",
+    )
 
     args = parser.parse_args()
 
@@ -1273,8 +1409,19 @@ def main() -> None:
     if args.dandiset:
         dandiset_ids = [d.strip() for d in args.dandiset.split(",") if d.strip()]
 
+    # Filter to NWB-only dandisets if requested
+    if args.nwb_only:
+        nwb_ids = get_nwb_dandiset_ids(args.data_path)
+        if dandiset_ids:
+            dandiset_ids = [d for d in dandiset_ids if d in set(nwb_ids)]
+            print(f"After NWB filter: {len(dandiset_ids)} dandisets")
+        else:
+            dandiset_ids = nwb_ids
+
     # Update output filename if specific dandisets
-    if dandiset_ids and args.output == "output/subdivision_choropleth.svg":
+    if args.nwb_only and args.output == "output/subdivision_choropleth.svg":
+        args.output = args.output.replace(".svg", "_nwb_only.svg")
+    elif dandiset_ids and not args.nwb_only and args.output == "output/subdivision_choropleth.svg":
         base_name = args.output.replace(".svg", "")
         if len(dandiset_ids) == 1:
             args.output = f"{base_name}_{dandiset_ids[0]}.svg"
@@ -1311,6 +1458,7 @@ def main() -> None:
         dandiset_ids=dandiset_ids,
         dry_run=args.dry_run,
         max_bytes=max_bytes,
+        vertical_colorbar=args.vertical_colorbar,
     )
 
 
