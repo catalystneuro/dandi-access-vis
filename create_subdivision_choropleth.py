@@ -17,6 +17,7 @@ import urllib.request
 from pathlib import Path
 from matplotlib.colors import Normalize
 from matplotlib.cm import ScalarMappable
+from shapely.geometry import box
 from tqdm import tqdm
 
 warnings.filterwarnings("ignore")
@@ -186,7 +187,7 @@ def create_subdivision_choropleth(
     dandiset_ids: Optional[List[str]] = None,
     dry_run: bool = False,
     max_bytes: Optional[int] = None,
-    vertical_colorbar: bool = False,
+    projection: str = "platecarree",
 ) -> None:
     """
     Create choropleth map showing data downloaded by admin-1 subdivisions worldwide.
@@ -204,10 +205,6 @@ def create_subdivision_choropleth(
     max_bytes : int, optional
         Maximum bytes value for color scale. Values above this are capped.
         If None (default), uses the maximum value in the data.
-    vertical_colorbar : bool, optional
-        If True, place colorbar vertically on the right side. By default False
-        (horizontal colorbar at the bottom).
-
     Examples
     --------
     >>> region_data = {'US/California': 1000000000, 'DE/Bavaria': 500000000}
@@ -253,7 +250,7 @@ def create_subdivision_choropleth(
         'CI': 'CIV', 'MT': 'MLT', 'JM': 'JAM', 'JO': 'JOR', 'ET': 'ETH',
         'MG': 'MDG', 'GP': 'GLP', 'RE': 'REU', 'KZ': 'KAZ', 'SY': 'SYR',
         'MD': 'MDA', 'YE': 'YEM', 'VG': 'VGB', 'OM': 'OMN', 'AZ': 'AZE',
-        'TL': 'TLS',
+        'TL': 'TLS', 'CV': 'CPV', 'VI': 'VIR',
     }
     iso2_to_iso3.update(common_iso_mappings)
 
@@ -269,6 +266,9 @@ def create_subdivision_choropleth(
         'MQ': ('MQ', None),  # Martinique - French overseas territory, aggregate to country level
         'CW': ('CW', None),  # Curaçao - Dutch Caribbean territory, aggregate to country level
         'MV': ('MV', None),  # Maldives - not in GADM, aggregate to country level
+        'AW': ('AW', None),  # Aruba - no admin-1 in GADM, aggregate to country level
+        'GI': ('GI', None),  # Gibraltar - no admin-1 in GADM, aggregate to country level
+        'SX': ('SX', None),  # Sint Maarten - no admin-1 in GADM, aggregate to country level
     }
 
     # Parse region data to extract subdivision-level data
@@ -338,6 +338,8 @@ def create_subdivision_choropleth(
             'rhineland-palatinate': 'rheinland-pfalz',
             'saxony-anhalt': 'sachsen-anhalt',
             'thuringia': 'thüringen',
+            'free and hanseatic city of hamburg': 'hamburg',
+            'free hanseatic city of bremen': 'bremen',
         },
         'ES': {
             'balearic islands': 'islas baleares',
@@ -354,9 +356,12 @@ def create_subdivision_choropleth(
             'asturias': 'principado de asturias',
             'murcia': 'región de murcia',
             'madrid': 'comunidad de madrid',
+            'melilla': 'ceuta y melilla',
+            'ceuta': 'ceuta y melilla',
         },
         'TH': {
             'lopburi': 'lop buri',
+            'buriram': 'buri ram',
         },
         'CH': {
             'geneva': 'genève',
@@ -415,6 +420,13 @@ def create_subdivision_choropleth(
             'novgorod oblast': 'novgorod',
             'nizhny novgorod oblast': 'nizhegorod',
             'oryol oblast': 'orel',
+            'zabaykalskiy (transbaikal) kray': "zabaykal'ye",
+            'zabaykalsky krai': "zabaykal'ye",
+            'transbaikal krai': "zabaykal'ye",
+            'karachayevo-cherkesiya republic': 'karachay-cherkess',
+            'kabardino-balkariya republic': 'kabardin-balkar',
+            'republic of tyva': 'tuva',
+            'tyva': 'tuva',
         },
         'EG': {
             'giza': 'al jizah',
@@ -494,6 +506,8 @@ def create_subdivision_choropleth(
             'riyadh region': 'ar riyad',
             'medina region': 'al madinah',
             'eastern province': 'ash-sharqīyah',
+            'jazan region': 'jizan',
+            'jazan': 'jizan',
         },
         'RO': {
             'bucurești': 'bucharest',
@@ -512,9 +526,13 @@ def create_subdivision_choropleth(
             'al aḩmadī': 'al ahmadi',
             'al ahmadi': 'al ahmadi',
             'al asimah': 'al kuwayt',
+            'al jahra governorate': 'al jahrah',
+            'al jahra': 'al jahrah',
         },
         'BT': {
             'chukha': 'chhukha',
+            'trashi yangste': 'trashi yangtse',
+            'mongar': 'monggar',
         },
         'CN': {
             'inner mongolia': 'nei mongol',
@@ -530,6 +548,7 @@ def create_subdivision_choropleth(
             'rhone-alpes': 'auvergne-rhône-alpes',
             'rhone alpes': 'auvergne-rhône-alpes',
             'corsica': 'corse',
+            'new aquitaine': 'nouvelle-aquitaine',
         },
         'PL': {
             'mazovia': 'mazowieckie',
@@ -547,6 +566,7 @@ def create_subdivision_choropleth(
             'łódź voivodeship': 'łódzkie',
             'opole voivodeship': 'opolskie',
             'podlasie': 'podlaskie',
+            'lubusz': 'lubuskie',
         },
         'AR': {
             'buenos aires f.d.': 'ciudad de buenos aires',
@@ -559,6 +579,11 @@ def create_subdivision_choropleth(
             'zaporizhzhia': 'zaporizhia',
             'mykolaiv': 'mykolayiv',
             'odesa': 'odessa',
+            'kyiv oblast': 'kiev',
+            'zhytomyr oblast': 'zhytomyr',
+            'rivne oblast': 'rivne',
+            'chernihiv oblast': 'chernihiv',
+            'kharkivska oblast': 'kharkiv',
         },
         'IQ': {
             'erbil': 'arbil',
@@ -600,6 +625,9 @@ def create_subdivision_choropleth(
             'zamboanga peninsula': 'zamboanga del sur',
             'caraga': 'agusan del norte',
             'mimaropa': 'oriental mindoro',
+            'bicol region': 'albay',
+            'autonomous region in muslim mindanao': 'maguindanao',
+            'soccsksargen': 'south cotabato',
         },
         'IS': {
             'capital region': 'höfuðborgarsvæði',
@@ -609,6 +637,7 @@ def create_subdivision_choropleth(
         'GR': {
             'central macedonia': 'macedonia and thrace',
             'western macedonia': 'epirus and western macedonia',
+            'west macedonia': 'epirus and western macedonia',
             'east macedonia and thrace': 'macedonia and thrace',
             'epirus': 'epirus and western macedonia',
             'west greece': 'peloponnese, western greece and',
@@ -617,11 +646,14 @@ def create_subdivision_choropleth(
             'ionian islands': 'peloponnese, western greece and',
             'thessaly': 'thessaly and central greece',
             'central greece': 'thessaly and central greece',
+            'south aegean': 'aegean',
+            'north aegean': 'aegean',
         },
         'NP': {
             'bagmati province': 'central',
             'province 3': 'central',
             'gandaki province': 'west',
+            'gandaki pradesh': 'west',
             'province 4': 'west',
             'lumbini province': 'west',
             'province 5': 'west',
@@ -632,6 +664,7 @@ def create_subdivision_choropleth(
             'madhesh': 'central',
             'province 2': 'central',
             'karnali province': 'mid-western',
+            'karnali pradesh': 'mid-western',
             'province 6': 'mid-western',
             'sudurpashchim province': 'far-western',
             'sudurpashchim pradesh': 'far-western',
@@ -653,12 +686,17 @@ def create_subdivision_choropleth(
             'oromiya': 'oromia',
             'sidama region': 'southern nations, nationalities',
             'south ethiopia regional state': 'southern nations, nationalities',
+            'central ethiopia regional state': 'southern nations, nationalities',
+            'binshangul gumuz': 'benshangul-gumaz',
         },
         'LB': {
             'mont-liban': 'mount lebanon',
             'beyrouth': 'beirut',
             'béqaa': 'bekaa',
             'liban-nord': 'north',
+            'baalbek-hermel governorate': 'baalbak - hermel',
+            'baalbek-hermel': 'baalbak - hermel',
+            'nabatieh': 'nabatiyeh',
         },
         'LK': {
             'western province': 'colombo',
@@ -666,6 +704,10 @@ def create_subdivision_choropleth(
             'southern province': 'galle',
             'northern province': 'jaffna',
             'eastern province': 'batticaloa',
+            'sabaragamuwa province': 'ratnapura',
+            'north western province': 'kurunegala',
+            'north central province': 'anuradhapura',
+            'uva province': 'badulla',
         },
         'BH': {
             'manama': 'capital',
@@ -681,6 +723,8 @@ def create_subdivision_choropleth(
             'minsk city': 'minsk',
             'brestskaya': 'brest',
             'gomelskaya': 'gomel',
+            "homyel' voblasc'": 'gomel',
+            'homyel voblasc': 'gomel',
             'mogilevskaya': 'mogilev',
             'vitebskaya': 'vitebsk',
         },
@@ -690,6 +734,8 @@ def create_subdivision_choropleth(
             'dingli': 'ċentrali',
             "saint paul's bay": 'tramuntana',
             'il-fgura': 'xlokk',
+            'birkirkara': 'ċentrali',
+            'l-imsida': 'ċentrali',
         },
         'MY': {
             'penang': 'pulau pinang',
@@ -702,6 +748,7 @@ def create_subdivision_choropleth(
             'jūrmala': 'riga',
             'jurmala': 'riga',
             'ķekava': 'riga',
+            'ventspils': 'kurzeme',
         },
         'KG': {
             'bishkek': 'chüy',
@@ -724,6 +771,12 @@ def create_subdivision_choropleth(
             'karaganda': 'qaraghandy',
             'batys qazaqstan': 'west kazakhstan',
             'jetisu region': 'almaty',
+            'kyzylorda': 'qyzylorda',
+            'kostanay': 'qostanay',
+            'zhetysu region': 'almaty',  # Zhetysu split from Almaty region in 2022, predates GADM 4.1
+            'ulytau region': 'qaraghandy',  # Ulytau split from Karaganda in 2022
+            'abai region': 'east kazakhstan',  # Abai split from East Kazakhstan in 2022
+            'turkistan': 'south kazakhstan',  # renamed in 2018
         },
         'CL': {
             'biobío': 'bío-bío',
@@ -758,6 +811,8 @@ def create_subdivision_choropleth(
             'brod-posavina': 'brodsko-posavska',
             'primorje-gorski kotar': 'primorsko-goranska',
             'split-dalmatia': 'splitsko-dalmatinska',
+            'zagreb county': 'zagrebačka',
+            'istria': 'istarska',
         },
         'BA': {
             'federation of b&h': 'federacija bosna i hercegovina',
@@ -770,6 +825,9 @@ def create_subdivision_choropleth(
         'OM': {
             'northeastern governorate': 'ash sharqiyah north',
             'ad dhahirah': 'al dhahira',
+            'ad dakhiliyah': 'ad dakhliyah',
+            'southeastern governorate': 'ash sharqiyah south',
+            'al buraimi': 'al buraymi',
         },
         'SI': {
             'ljubljana': 'osrednjeslovenska',
@@ -777,6 +835,15 @@ def create_subdivision_choropleth(
             'velenje': 'savinjska',
             'maribor city municipality': 'podravska',
             'kranj': 'gorenjska',
+            'urban municipality of nova gorica': 'goriška',
+            'nova gorica': 'goriška',
+            'urban municipality of maribor': 'podravska',
+            'urban municipality of koper': 'obalno-kraška',
+            'municipality of ajdovščina': 'goriška',
+            'škofja loka': 'gorenjska',
+            'municipality of žalec': 'savinjska',
+            'urban municipality of slovenj gradec': 'koroška',
+            'urban municipality of kranj': 'gorenjska',
         },
         'UG': {
             'central region': 'kampala',
@@ -791,9 +858,11 @@ def create_subdivision_choropleth(
         'MG': {
             'analamanga': 'antananarivo',
             'atsinanana': 'toamasina',
+            'upper matsiatra': 'fianarantsoa',
         },
         'LY': {
             'banghāzī': 'benghazi',
+            'al jafarah': 'al jifarah',
         },
         'JO': {
             'jerash': 'jarash',
@@ -802,9 +871,12 @@ def create_subdivision_choropleth(
         'YE': {
             "ta'izz": "ta`izz",
             'amanat alasimah': 'amanat al asimah',
+            'aden': '`adan',
         },
         'DO': {
             'hermanas mirabal': 'salcedo',
+            'el seíbo': 'el seybo',
+            'baoruco province': 'bahoruco',
         },
         'HN': {
             'bay islands': 'islas de la bahía',
@@ -821,6 +893,8 @@ def create_subdivision_choropleth(
         },
         'LA': {
             'bolikhamsai': 'bolikhamxai',
+            'luang prabang province': 'louangphrabang',
+            'luang prabang': 'louangphrabang',
         },
         'MR': {
             'mauritania': 'nouakchott',
@@ -836,6 +910,9 @@ def create_subdivision_choropleth(
             'barda': 'aran',
             'abşeron': 'absheron',
             'mingǝcevir': 'aran',
+            'mingacevir city': 'aran',
+            'masally': 'lankaran',
+            'goranboy district': 'ganja-qazakh',
         },
         'MD': {
             'chișinău municipality': 'chișinău',
@@ -851,10 +928,6 @@ def create_subdivision_choropleth(
         'KE': {
             'tharaka - nithi': 'tharaka-nithi',
         },
-        'PK': {
-            'gilgit-baltistan': 'federally administered tribal ar',
-            'azad kashmir': 'federally administered tribal ar',
-        },
         'TR': {
             'kahramanmaraş': 'k. maras',
             'kahramanmaras': 'k. maras',
@@ -862,13 +935,29 @@ def create_subdivision_choropleth(
             'İzmir province': 'izmir',
             'i̇zmir province': 'izmir',
             'eskişehir': 'eskisehir',
+            'zonguldak province': 'zinguldak',  # GADM misspells Zonguldak
+            'zonguldak': 'zinguldak',
+            'kırıkkale': 'kinkkale',  # GADM misspells Kırıkkale
+            'kirikkale': 'kinkkale',
         },
         'CZ': {
             'central bohemia': 'středočeský',
             'south moravian': 'jihomoravský',
+            'moravian-silesian region': 'moravskoslezský',
+            'south bohemian region': 'jihočeský',
+            'plzeň region': 'plzeňský',
+            'pardubice region': 'pardubický',
+            'hradec králové region': 'královéhradecký',
+            'ústí nad labem region': 'ústecký',
+            'liberec region': 'liberecký',
+            'olomouc region': 'olomoucký',
+            'karlovy vary region': 'karlovarský',
+            'zlín region': 'zlínský',
+            'vysočina region': 'kraj vysočina',
         },
         'UZ': {
             'tashkent': 'toshkent shahri',
+            'tashkent region': 'toshkent',
             'samarkand': "samarqand'",
             'bukhara': 'buxoro',
             'andijan region': 'andijon',
@@ -888,6 +977,9 @@ def create_subdivision_choropleth(
             'tanger-tetouan-al hoceima': 'tanger - tétouan',
             'béni mellal-khénifra': 'tadla - azilal',
             'beni mellal-khenifra': 'tadla - azilal',
+            'guelmim-oued noun': 'guelmim - es-semara',
+            'laayoune-sakia el hamra': 'laâyoune - boujdour - sakia el h',
+            'morocco': 'grand casablanca',  # country-level entries mapped to largest city
         },
         'JM': {
             'st. elizabeth': 'saint elizabeth',
@@ -906,6 +998,7 @@ def create_subdivision_choropleth(
         },
         'SY': {
             'latakia': 'lattakia',
+            'homs': 'hims',
         },
         'ID': {
             'east java': 'jawa timur',
@@ -928,6 +1021,10 @@ def create_subdivision_choropleth(
             'southwest papua': 'papua barat',
             'bangka–belitung islands': 'bangka belitung',
             'east nusa tenggara': 'nusa tenggara timur',
+            'west papua': 'papua barat',
+            'southeast sulawesi': 'sulawesi tenggara',
+            'west sulawesi': 'sulawesi barat',
+            'north maluku': 'maluku utara',
         },
         'CI': {
             'abidjan autonomous district': 'abidjan',
@@ -951,6 +1048,123 @@ def create_subdivision_choropleth(
             'panevezys': 'panevezio',
             'panevėžys': 'panevezio',
             'siauliai': 'šiauliai',
+        },
+        'KH': {
+            'kampong thom': 'kâmpóng thum',
+            'kampong cham': 'kâmpóng cham',
+            'kampong chhnang': 'kâmpóng chhnang',
+            'kampong speu': 'kâmpóng spœ',
+            'kampot': 'kâmpôt',
+            'kandal': 'kândal',
+            'koh kong': 'kaôh kong',
+            'kratie': 'krâchéb',
+            'mondulkiri': 'môndól kiri',
+            'oddar meanchey': 'otdar mean chey',
+            'preah vihear': 'preah vihéar',
+            'pursat': 'pouthisat',
+            'ratanakiri': 'rôtânôkiri',
+            'siem reap': 'siemréab',
+            'stung treng': 'stœng trêng',
+            'takeo': 'takêv',
+            'banteay meanchey': 'bântéay méanchey',
+            'battambang': 'batdâmbâng',
+        },
+        'BG': {
+            'sofia-capital': 'grad sofiya',
+        },
+        'TN': {
+            'ben arous governorate': 'ben arous (tunis sud)',
+            'ben arous': 'ben arous (tunis sud)',
+            'sidi bouzid governorate': 'sidi bou zid',
+            'sidi bouzid': 'sidi bou zid',
+            'manouba': 'manubah',
+        },
+        'GF': {
+            'guyane': 'cayenne',
+            'french guiana': 'cayenne',
+        },
+        'AE': {
+            'umm al quwain': 'umm al-qaywayn',
+        },
+        'GT': {
+            'quetzaltenango': 'quezaltenango',
+        },
+        'BF': {
+            'hauts-bassins': 'haut-bassins',
+        },
+        'CM': {
+            'north': 'nord',
+            'far north': 'extrême-nord',
+            'east': 'est',
+            'west': 'ouest',
+            'south': 'sud',
+            'northwest': 'nord-ouest',
+            'north-west': 'nord-ouest',
+            'southwest': 'sud-ouest',
+            'south-west': 'sud-ouest',
+            'adamawa': 'adamaoua',
+        },
+        'MW': {
+            # GADM uses districts for Malawi; map regions to their largest district
+            'central region': 'lilongwe',
+            'southern region': 'blantyre',
+            'northern region': 'mzimba',
+        },
+        'SO': {
+            'lower shabeelle': 'shabeellaha hoose',
+            'middle shabeelle': 'shabeellaha dhexe',
+            'banadir': 'banaadir',
+        },
+        'GA': {
+            'woleu-ntem': 'wouleu-ntem',
+        },
+        'VI': {
+            'saint thomas island': 'saint thomas',
+            'saint croix island': 'saint croix',
+            'saint john island': 'saint john',
+        },
+        'SR': {
+            'para district': 'para',
+        },
+        'CD': {
+            'north kivu': 'nord-kivu',
+            'south kivu': 'sud-kivu',
+        },
+        'TZ': {
+            'zanzibar urban': 'mjini magharibi',
+        },
+        'JE': {
+            'jersey': 'saint helier',
+            'st helier': 'saint helier',
+        },
+        'MN': {
+            'central aimak': 'töv',
+            'bayankhongor': 'bayanhongor',
+            'ulan bator': 'ulaanbaatar',
+        },
+        'BZ': {
+            'southern district': 'toledo',
+        },
+        'KY': {
+            'cayman islands': 'george town',
+        },
+        'KR': {
+            'north chungcheong': 'chungcheongbuk-do',
+            'south chungcheong': 'chungcheongnam-do',
+            'north jeolla': 'jeollabuk-do',
+            'south jeolla': 'jeollanam-do',
+            'north gyeongsang': 'gyeongsangbuk-do',
+            'south gyeongsang': 'gyeongsangnam-do',
+        },
+        'SC': {
+            'la rivière anglaise': 'english river',
+        },
+        'TC': {
+            'turks and caicos islands': 'providenciales and west caicos',
+        },
+        'AF': {
+            'helmand': 'hilmand',
+            'herat': 'hirat',
         },
     }
 
@@ -985,7 +1199,7 @@ def create_subdivision_choropleth(
             'đ': 'd', 'ď': 'd',
             'ğ': 'g',
             'ħ': 'h', 'ḥ': 'h',
-            '-': ' ', '_': ' ', "'": '', '\u2019': '', '\u2018': '', '\u02bc': '',
+            '-': ' ', '_': ' ', "'": '', '`': '', '\u2019': '', '\u2018': '', '\u02bc': '', '\u02bb': '',
         }
         for old, new in replacements.items():
             name = name.replace(old, new)
@@ -1026,6 +1240,13 @@ def create_subdivision_choropleth(
                 aliased_key = f"{country_code}/{aliased_norm}"
                 aliased_subdivision_data[aliased_key] = aliased_subdivision_data.get(aliased_key, 0) + bytes_val
 
+    # GADM assigns Z-codes to disputed territories; map them to the country
+    # code used in the access logs so their data can still be matched
+    disputed_gid0_to_iso2 = {
+        'Z01': 'IN',  # Jammu and Kashmir
+        'Z06': 'PK',  # Azad Kashmir, Gilgit-Baltistan
+    }
+
     # Track which data keys have been matched
     matched_data_keys = set()
     
@@ -1042,11 +1263,12 @@ def create_subdivision_choropleth(
             continue
         
         # Find 2-letter country code
-        country_code = None
-        for iso2, iso3 in iso2_to_iso3.items():
-            if iso3 == country_iso3:
-                country_code = iso2
-                break
+        country_code = disputed_gid0_to_iso2.get(country_iso3)
+        if country_code is None:
+            for iso2, iso3 in iso2_to_iso3.items():
+                if iso3 == country_iso3:
+                    country_code = iso2
+                    break
         
         if country_code:
             total_bytes = 0
@@ -1122,6 +1344,25 @@ def create_subdivision_choropleth(
         print("\n[Dry run - skipping plot generation]")
         return
 
+    # Reproject if requested. Crop to lat range first to avoid pole singularities
+    # (Mercator) and to keep extents reasonable for area-distorting projections.
+    projection_crs = {
+        "platecarree": None,
+        "mercator": "EPSG:3857",
+        "equalearth": "EPSG:8857",
+        "europe": "EPSG:3035",
+    }
+    if projection not in projection_crs:
+        raise ValueError(
+            f"Unknown projection '{projection}'. Choose from {list(projection_crs)}"
+        )
+    target_crs = projection_crs[projection]
+    if target_crs is not None:
+        # Clip latitudes before reprojection to avoid Mercator's infinity at the poles
+        lat_clip_box = box(-180, -60, 180, 84)
+        world_admin1 = world_admin1.clip(lat_clip_box)
+        world_admin1 = world_admin1.to_crs(target_crs)
+
     # Create figure
     fig, ax = plt.subplots(figsize=(20, 12), facecolor='white')
     ax.set_facecolor('white')
@@ -1194,9 +1435,16 @@ def create_subdivision_choropleth(
         alpha=0.2
     )
 
-    # Set extent to exclude Antarctica
-    ax.set_xlim(-180, 180)
-    ax.set_ylim(-60, 85)
+    # Set extent — for reprojected maps, use the data's own bounds since x/y
+    # are now in projection units (meters), not degrees.
+    if projection == "platecarree":
+        ax.set_xlim(-180, 180)
+        ax.set_ylim(-60, 85)
+    else:
+        minx, miny, maxx, maxy = world_admin1.total_bounds
+        ax.set_xlim(minx, maxx)
+        ax.set_ylim(miny, maxy)
+        ax.set_aspect('equal')
 
     # Remove axis elements
     ax.set_xticks([])
@@ -1206,23 +1454,15 @@ def create_subdivision_choropleth(
 
     # Add colorbar if we have data
     if len(subdivisions_with_data) > 0:
-        if vertical_colorbar:
-            cbar_ax = fig.add_axes([1.0, 0.35, 0.015, 0.3])
-            orientation = 'vertical'
-        else:
-            cbar_ax = fig.add_axes([0.375, 0.08, 0.25, 0.02])
-            orientation = 'horizontal'
+        cbar_ax = fig.add_axes([0.1175, 0.19, 0.015, 0.3])
+        orientation = 'vertical'
         sm = ScalarMappable(norm=norm, cmap=cmap)
         sm.set_array([])
         cbar = fig.colorbar(sm, cax=cbar_ax, orientation=orientation)
-        if vertical_colorbar:
-            cbar.ax.tick_params(
-                labelsize=14, left=False, right=True, labelleft=False, labelright=True
-            )
-        else:
-            cbar.ax.tick_params(
-                labelsize=14, bottom=True, top=False, labelbottom=True, labeltop=False
-            )
+        cbar.ax.tick_params(
+            labelsize=14, left=True, right=False, labelleft=True, labelright=False
+        )
+        cbar.ax.yaxis.set_label_position('left')
 
         # Define fixed tick values for readable labels
         unit_values = [1024, 1024**2, 1024**3, 1024**4, 1024**5]
@@ -1388,9 +1628,12 @@ def main() -> None:
         help="Only include dandisets that contain NWB data",
     )
     parser.add_argument(
-        "--vertical-colorbar",
-        action="store_true",
-        help="Place colorbar vertically on the right side instead of horizontally at the bottom",
+        "--projection",
+        choices=["platecarree", "mercator", "equalearth", "europe"],
+        default="platecarree",
+        help="Map projection: platecarree (default lat/lon), mercator (EPSG:3857, "
+             "enlarges high latitudes / Europe), equalearth (ESRI:54035), "
+             "europe (EPSG:3035, Europe-centered LAEA).",
     )
 
     args = parser.parse_args()
@@ -1458,7 +1701,7 @@ def main() -> None:
         dandiset_ids=dandiset_ids,
         dry_run=args.dry_run,
         max_bytes=max_bytes,
-        vertical_colorbar=args.vertical_colorbar,
+        projection=args.projection,
     )
 
 
